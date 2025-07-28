@@ -26,39 +26,81 @@
     </section>
 
     <section class="dog-feeding">
-      <h2>🐶 Dog Feeding</h2>
-      <label><input type="checkbox" id="feed-morning"> Morning</label>
-      <label><input type="checkbox" id="feed-evening"> Evening</label>
+      <h2 id="feeding-question">🐶 Dog Feeding</h2>
+      <div id="feeding-options">
+        <label><input type="checkbox" id="feed-yes"> Yes</label>
+        <label><input type="checkbox" id="feed-no"> No</label>
+      </div>
+      <div id="feeding-result" style="font-size: 2rem; font-weight: bold; margin-top: 1rem;"></div>
       <p id="last-updated">Last updated: --:--</p>
+      <button id="reset-feeding" style="display: none; margin-top: 1rem;">Reset</button>
     </section>
   </div>
 
   <script>
-    function saveFeedingStatus() {
-      const morning = document.getElementById('feed-morning').checked;
-      const evening = document.getElementById('feed-evening').checked;
+    function updateFeedingQuestion() {
+      const now = new Date();
+      const hour = now.getHours();
+      const header = document.getElementById('feeding-question');
+      if (hour >= 15) {
+        header.textContent = 'Have the dogs been fed this afternoon?';
+      } else {
+        header.textContent = 'Have the dogs been fed this morning?';
+      }
+    }
+
+    function saveFeedingStatus(response) {
       const data = {
-        morning,
-        evening,
+        response,
         timestamp: new Date().toLocaleTimeString()
       };
       localStorage.setItem('dogFeedingStatus', JSON.stringify(data));
+      showFeedingResult(data);
+    }
+
+    function showFeedingResult(data) {
+      const resultEl = document.getElementById('feeding-result');
+      resultEl.textContent = data.response.toUpperCase();
       document.getElementById('last-updated').textContent = 'Last updated: ' + data.timestamp;
+      document.getElementById('feeding-options').style.display = 'none';
+      document.getElementById('reset-feeding').style.display = 'inline-block';
     }
 
     function loadFeedingStatus() {
       const data = JSON.parse(localStorage.getItem('dogFeedingStatus'));
       if (data) {
-        document.getElementById('feed-morning').checked = data.morning;
-        document.getElementById('feed-evening').checked = data.evening;
-        document.getElementById('last-updated').textContent = 'Last updated: ' + data.timestamp;
+        showFeedingResult(data);
       }
     }
 
+    function resetFeedingStatus() {
+      localStorage.removeItem('dogFeedingStatus');
+      document.getElementById('feeding-options').style.display = 'block';
+      document.getElementById('feeding-result').textContent = '';
+      document.getElementById('last-updated').textContent = 'Last updated: --:--';
+      document.getElementById('reset-feeding').style.display = 'none';
+      document.getElementById('feed-yes').checked = false;
+      document.getElementById('feed-no').checked = false;
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+      updateFeedingQuestion();
       loadFeedingStatus();
-      document.getElementById('feed-morning').addEventListener('change', saveFeedingStatus);
-      document.getElementById('feed-evening').addEventListener('change', saveFeedingStatus);
+
+      document.getElementById('feed-yes').addEventListener('change', () => {
+        if (document.getElementById('feed-yes').checked) {
+          saveFeedingStatus('yes');
+        }
+      });
+
+      document.getElementById('feed-no').addEventListener('change', () => {
+        if (document.getElementById('feed-no').checked) {
+          saveFeedingStatus('no');
+        }
+      });
+
+      document.getElementById('reset-feeding').addEventListener('click', resetFeedingStatus);
+
       fetchWeather();
       fetchICalCalendar();
     });
@@ -131,7 +173,6 @@
             statusEl.textContent = 'Jeff’s work location is unclear today.';
           }
         } else {
-          const todayDay = new Date().getDay();
           statusEl.textContent = 'Jeff is not working today.';
         }
       } catch (err) {
