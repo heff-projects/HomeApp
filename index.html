@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Home Dashboard</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
   <div class="container">
@@ -23,8 +22,7 @@
 
     <section class="calendar">
       <h2>🗓️ Work Status</h2>
-      <button id="calendar-button" style="display:none;">Check Calendar</button>
-      <p id="work-status">Checking Google Calendar...</p>
+      <p id="work-status">Checking calendar...</p>
     </section>
 
     <section class="dog-feeding">
@@ -36,9 +34,6 @@
   </div>
 
   <script>
-    let tokenClient;
-    const CLIENT_ID = '114691447555-qc0t3r5lnjk2j8kl37gbdbklo0gg0io1.apps.googleusercontent.com';
-
     function saveFeedingStatus() {
       const morning = document.getElementById('feed-morning').checked;
       const evening = document.getElementById('feed-evening').checked;
@@ -60,31 +55,12 @@
       }
     }
 
-    function initializeGoogleClient() {
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/calendar.readonly',
-        callback: async (tokenResponse) => {
-          if (tokenResponse && tokenResponse.access_token) {
-            await fetchCalendarEvents(tokenResponse.access_token);
-          }
-        }
-      });
-
-      tokenClient.requestAccessToken({ prompt: '' });
-    }
-
     document.addEventListener('DOMContentLoaded', () => {
       loadFeedingStatus();
       document.getElementById('feed-morning').addEventListener('change', saveFeedingStatus);
       document.getElementById('feed-evening').addEventListener('change', saveFeedingStatus);
       fetchWeather();
-
-      window.onload = () => initializeGoogleClient();
-
-      document.getElementById('calendar-button').addEventListener('click', () => {
-        tokenClient.requestAccessToken();
-      });
+      fetchICalCalendar();
     });
 
     const apiKey = '9ac72a485ad418e18ee51d57f8f60dab';
@@ -131,38 +107,59 @@
       });
     }
 
-    async function fetchCalendarEvents(token) {
-      try {
-        const now = new Date().toISOString();
-        const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${now}&singleEvents=true&orderBy=startTime&maxResults=5`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        const data = await response.json();
+    async function fetchICalCalendar() {
+      const icalUrl = 'https://calendar.google.com/calendar/ical/jthomasmanning%40gmail.com/public/basic.ics';
 
-        const events = data.items || [];
+      try {
+        const res = await fetch(icalUrl);
+        const text = await res.text();
+        const events = parseICS(text);
+
+        const today = new Date().toISOString().split('T')[0];
+        const todayEvents = events.filter(e => e.start.startsWith(today));
+
         const statusEl = document.getElementById('work-status');
 
-        if (events.length > 0) {
-          const nextEvent = events[0];
-          const title = nextEvent.summary.toLowerCase();
+        const match = todayEvents.find(e => e.summary.toLowerCase().includes('home') || e.summary.toLowerCase().includes('office'));
 
-          if (title.includes('home')) {
+        if (match) {
+          if (match.summary.toLowerCase().includes('home')) {
             statusEl.textContent = 'Jeff is working from home today.';
-          } else if (title.includes('office')) {
+          } else if (match.summary.toLowerCase().includes('office')) {
             statusEl.textContent = 'Jeff is working at the office today.';
           } else {
             statusEl.textContent = 'Jeff’s work location is unclear today.';
           }
         } else {
-          statusEl.textContent = 'Jeff has no work events scheduled today.';
+          const todayDay = new Date().getDay();
+          statusEl.textContent = 'Jeff is not working today.';
         }
       } catch (err) {
-        console.error('Calendar fetch error:', err);
-        document.getElementById('work-status').textContent = 'Calendar failed to load';
-        document.getElementById('calendar-button').style.display = 'inline-block';
+        console.error('ICS fetch error:', err);
+        document.getElementById('work-status').textContent = 'Calendar failed to load.';
       }
+    }
+
+    function parseICS(data) {
+      const events = [];
+      const lines = data.split(/\r?\n/);
+      let current = null;
+
+      lines.forEach(line => {
+        if (line === 'BEGIN:VEVENT') {
+          current = {};
+        } else if (line === 'END:VEVENT') {
+          if (current) events.push(current);
+          current = null;
+        } else if (current) {
+          const [key, ...rest] = line.split(':');
+          const value = rest.join(':');
+          if (key.startsWith('SUMMARY')) current.summary = value;
+          if (key.startsWith('DTSTART')) current.start = value;
+        }
+      });
+
+      return events;
     }
   </script>
 </body>
