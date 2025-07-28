@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://apis.google.com/js/api.js"></script>
+</head>
+<body>
+  <div class="container">
+    <section class="weather">
+      <h2>☀️ Weather</h2>
+      <p>Loading weather...</p>
+    </section>
+
+    <section class="calendar">
+      <h2>🗓️ Work Status</h2>
+      <p id="work-status">Checking calendar...</p>
+      <p id="next-event">Loading next event...</p>
+    </section>
+
+    <section class="dog-feeding">
+      <h2>🐶 Dog Feeding</h2>
+      <label><input type="checkbox" id="feed-morning"> Morning</label>
+      <label><input type="checkbox" id="feed-evening"> Evening</label>
+      <p id="last-updated">Last updated: --:--</p>
+    </section>
+  </div>
+
+  <script>
+    // Save and load checkbox states
+    function saveFeedingStatus() {
+      const morning = document.getElementById('feed-morning').checked;
+      const evening = document.getElementById('feed-evening').checked;
+      const data = {
+        morning,
+        evening,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      localStorage.setItem('dogFeedingStatus', JSON.stringify(data));
+      document.getElementById('last-updated').textContent = 'Last updated: ' + data.timestamp;
+    }
+
+    function loadFeedingStatus() {
+      const data = JSON.parse(localStorage.getItem('dogFeedingStatus'));
+      if (data) {
+        document.getElementById('feed-morning').checked = data.morning;
+        document.getElementById('feed-evening').checked = data.evening;
+        document.getElementById('last-updated').textContent = 'Last updated: ' + data.timestamp;
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadFeedingStatus();
+
+      document.getElementById('feed-morning').addEventListener('change', saveFeedingStatus);
+      document.getElementById('feed-evening').addEventListener('change', saveFeedingStatus);
+
+      fetchWeather();
+      initGoogleAPI();
+    });
+
+    // Weather API (OpenWeatherMap One Call v3.0)
+    const apiKey = '9ac72a485ad418e18ee51d57f8f60dab';
+    const homeCoords = { lat: 33.8297, lon: -118.1339 }; // Long Beach 90808
+    const sealBeachCoords = { lat: 33.7414, lon: -118.1065 };
+
+    async function fetchWeather() {
+      const homeUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${homeCoords.lat}&lon=${homeCoords.lon}&appid=${apiKey}&units=imperial`;
+      const pierUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${sealBeachCoords.lat}&lon=${sealBeachCoords.lon}&appid=${apiKey}&units=imperial`;
+
+      try {
+        const [homeRes, pierRes] = await Promise.all([
+          fetch(homeUrl),
+          fetch(pierUrl)
+        ]);
+        const homeData = await homeRes.json();
+        const pierData = await pierRes.json();
+
+        const weatherSection = document.querySelector('.weather');
+        weatherSection.innerHTML = `
+          <h2>☀️ Weather</h2>
+          <p><strong>Home (90808):</strong> ${homeData.current.weather[0].description}, ${Math.round(homeData.current.temp)}°F (High: ${Math.round(homeData.daily[0].temp.max)}°F)</p>
+          <p><strong>Seal Beach Pier:</strong> ${Math.round(pierData.current.temp)}°F, Wind: ${Math.round(pierData.current.wind_speed)} mph</p>
+        `;
+      } catch (err) {
+        console.error('Weather error:', err);
+      }
+    }
+
+    // Google Calendar API
+    const CLIENT_ID = '114691447555-qc0t3r5lnjk2j8kl37gbdbklo0gg0io1.apps.googleusercontent.com';
+    const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly';
+
+    function initGoogleAPI() {
+      gapi.load('client:auth2', async () => {
+        await gapi.client.init({
+          clientId: CLIENT_ID,
+          scope: SCOPES
+        });
+        gapi.auth2.getAuthInstance().signIn().then(loadCalendarEvents);
+      });
+    }
+
+    async function loadCalendarEvents() {
+      try {
+        const now = new Date().toISOString();
+        const response = await gapi.client.calendar.events.list({
+          calendarId: 'primary',
+          timeMin: now,
+          showDeleted: false,
+          singleEvents: true,
+          orderBy: 'startTime',
+          maxResults: 5
+        });
+
+        const events = response.result.items;
+        const statusEl = document.getElementById('work-status');
+        const nextEl = document.getElementById('next-event');
+
+        if (events.length > 0) {
+          const nextEvent = events[0];
+          const title = nextEvent.summary.toLowerCase();
+
+          if (title.includes('home')) {
+            statusEl.textContent = 'Working from Home';
+          } else if (title.includes('office')) {
+            statusEl.textContent = 'Working in Office';
+          } else {
+            statusEl.textContent = 'Status unclear';
+          }
+
+          const time = nextEvent.start.dateTime || nextEvent.start.date;
+          nextEl.textContent = `Next Event: "${nextEvent.summary}" @ ${new Date(time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+        } else {
+          statusEl.textContent = 'No upcoming events';
+          nextEl.textContent = '';
+        }
+      } catch (err) {
+        console.error('Calendar error:', err);
+        document.getElementById('work-status').textContent = 'Calendar failed to load';
+      }
+    }
+  </script>
+</body>
+</html>
