@@ -57,6 +57,42 @@ strong {
   color: #88c0ff;
 }
 
+.weather-hourly {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.weather-hour {
+  flex: 0 0 auto;
+  background-color: #3a3a4d;
+  border-radius: 10px;
+  padding: 0.5rem;
+  text-align: center;
+  width: 60px;
+}
+
+.weather-hour img {
+  width: 40px;
+  height: 40px;
+  display: block;
+  margin: 0 auto;
+}
+
+.weather-hour .time {
+  font-size: 0.9rem;
+  color: #ccc;
+  margin-bottom: 0.25rem;
+}
+
+.weather-hour .temp {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #fff;
+}
+
 @media (max-width: 600px) {
   .container {
     padding: 1rem;
