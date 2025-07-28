@@ -25,7 +25,6 @@
       <h2>🗓️ Work Status</h2>
       <button id="calendar-button" style="display:none;">Check Calendar</button>
       <p id="work-status">Checking Google Calendar...</p>
-      <p id="next-event"></p>
     </section>
 
     <section class="dog-feeding">
@@ -72,7 +71,6 @@
         }
       });
 
-      // Try silent auth
       tokenClient.requestAccessToken({ prompt: '' });
     }
 
@@ -145,25 +143,20 @@
 
         const events = data.items || [];
         const statusEl = document.getElementById('work-status');
-        const nextEl = document.getElementById('next-event');
 
         if (events.length > 0) {
           const nextEvent = events[0];
           const title = nextEvent.summary.toLowerCase();
 
           if (title.includes('home')) {
-            statusEl.textContent = 'Working from Home';
+            statusEl.textContent = 'Jeff is working from home today.';
           } else if (title.includes('office')) {
-            statusEl.textContent = 'Working in Office';
+            statusEl.textContent = 'Jeff is working at the office today.';
           } else {
-            statusEl.textContent = 'Status unclear';
+            statusEl.textContent = 'Jeff’s work location is unclear today.';
           }
-
-          const time = nextEvent.start.dateTime || nextEvent.start.date;
-          nextEl.textContent = `Next Event: "${nextEvent.summary}" @ ${new Date(time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
         } else {
-          statusEl.textContent = 'No upcoming events';
-          nextEl.textContent = '';
+          statusEl.textContent = 'Jeff has no work events scheduled today.';
         }
       } catch (err) {
         console.error('Calendar fetch error:', err);
