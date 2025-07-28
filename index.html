@@ -23,14 +23,8 @@
 
     <section class="calendar">
       <h2>🗓️ Work Status</h2>
-      <div id="g_id_onload"
-        data-client_id="114691447555-qc0t3r5lnjk2j8kl37gbdbklo0gg0io1.apps.googleusercontent.com"
-        data-callback="handleCredentialResponse"
-        data-auto_prompt="true"
-        data-scope="https://www.googleapis.com/auth/calendar.readonly">
-      </div>
-      <div class="g_id_signin" data-type="standard"></div>
-      <p id="work-status">Waiting for Google sign-in...</p>
+      <button id="calendar-button">Check Calendar</button>
+      <p id="work-status">Waiting for sign-in...</p>
       <p id="next-event"></p>
     </section>
 
@@ -69,6 +63,17 @@
       document.getElementById('feed-morning').addEventListener('change', saveFeedingStatus);
       document.getElementById('feed-evening').addEventListener('change', saveFeedingStatus);
       fetchWeather();
+
+      document.getElementById('calendar-button').addEventListener('click', () => {
+        const client = google.accounts.oauth2.initTokenClient({
+          client_id: '114691447555-qc0t3r5lnjk2j8kl37gbdbklo0gg0io1.apps.googleusercontent.com',
+          scope: 'https://www.googleapis.com/auth/calendar.readonly',
+          callback: async (tokenResponse) => {
+            await fetchCalendarEvents(tokenResponse.access_token);
+          }
+        });
+        client.requestAccessToken();
+      });
     });
 
     const apiKey = '9ac72a485ad418e18ee51d57f8f60dab';
@@ -113,18 +118,6 @@
         `;
         container.appendChild(el);
       });
-    }
-
-    function handleCredentialResponse(response) {
-      const accessToken = google.accounts.oauth2.initTokenClient({
-        client_id: '114691447555-qc0t3r5lnjk2j8kl37gbdbklo0gg0io1.apps.googleusercontent.com',
-        scope: 'https://www.googleapis.com/auth/calendar.readonly',
-        callback: async (tokenResponse) => {
-          await fetchCalendarEvents(tokenResponse.access_token);
-        }
-      });
-
-      accessToken.requestAccessToken();
     }
 
     async function fetchCalendarEvents(token) {
