@@ -23,8 +23,8 @@
 
     <section class="calendar">
       <h2>🗓️ Work Status</h2>
-      <button id="calendar-button">Check Calendar</button>
-      <p id="work-status">Waiting for sign-in...</p>
+      <button id="calendar-button" style="display:none;">Check Calendar</button>
+      <p id="work-status">Checking Google Calendar...</p>
       <p id="next-event"></p>
     </section>
 
@@ -37,6 +37,9 @@
   </div>
 
   <script>
+    let tokenClient;
+    const CLIENT_ID = '114691447555-qc0t3r5lnjk2j8kl37gbdbklo0gg0io1.apps.googleusercontent.com';
+
     function saveFeedingStatus() {
       const morning = document.getElementById('feed-morning').checked;
       const evening = document.getElementById('feed-evening').checked;
@@ -58,21 +61,31 @@
       }
     }
 
+    function initializeGoogleClient() {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        callback: async (tokenResponse) => {
+          if (tokenResponse && tokenResponse.access_token) {
+            await fetchCalendarEvents(tokenResponse.access_token);
+          }
+        }
+      });
+
+      // Try silent auth
+      tokenClient.requestAccessToken({ prompt: '' });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       loadFeedingStatus();
       document.getElementById('feed-morning').addEventListener('change', saveFeedingStatus);
       document.getElementById('feed-evening').addEventListener('change', saveFeedingStatus);
       fetchWeather();
 
+      window.onload = () => initializeGoogleClient();
+
       document.getElementById('calendar-button').addEventListener('click', () => {
-        const client = google.accounts.oauth2.initTokenClient({
-          client_id: '114691447555-qc0t3r5lnjk2j8kl37gbdbklo0gg0io1.apps.googleusercontent.com',
-          scope: 'https://www.googleapis.com/auth/calendar.readonly',
-          callback: async (tokenResponse) => {
-            await fetchCalendarEvents(tokenResponse.access_token);
-          }
-        });
-        client.requestAccessToken();
+        tokenClient.requestAccessToken();
       });
     });
 
@@ -155,6 +168,7 @@
       } catch (err) {
         console.error('Calendar fetch error:', err);
         document.getElementById('work-status').textContent = 'Calendar failed to load';
+        document.getElementById('calendar-button').style.display = 'inline-block';
       }
     }
   </script>
