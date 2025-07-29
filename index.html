@@ -5,6 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Home Dashboard</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .calendar-dark-wrapper iframe {
+      width: 100%;
+      height: 40vh;
+      border: none;
+      border-radius: 16px;
+    }
+    .weather-hourly {
+      display: flex;
+      overflow-x: auto;
+      gap: 1rem;
+      padding: 0.5rem 0;
+    }
+    .weather-hour {
+      flex: 0 0 auto;
+      text-align: center;
+      min-width: 60px;
+    }
+    .weather-hour img {
+      width: 40px;
+      height: 40px;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -21,8 +44,10 @@
     </section>
 
     <section class="calendar">
-      <h2>🗓️ Work Status</h2>
-      <p id="work-status">Checking calendar...</p>
+      <h2>🗓️ Work Calendar</h2>
+      <div class="calendar-dark-wrapper">
+        <iframe class="responsive-calendar" src="https://calendar.google.com/calendar/embed?height=400&wkst=1&ctz=America%2FLos_Angeles&showPrint=0&mode=WEEK&showNav=0&showTabs=0&showCalendars=0&showTz=0&showTitle=0&src=NjAwMjQ0ZTE4NzRhMmY2ODBlNzg5YzdmZmRkZTE0YzkxZmI3M2M0ZWM2MjFmY2Y1YTljNWMyMDJkMDE1YzZiOUBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23c0ca33" frameborder="0" scrolling="no"></iframe>
+      </div>
     </section>
 
     <section class="dog-feeding">
@@ -102,7 +127,6 @@
       document.getElementById('reset-feeding').addEventListener('click', resetFeedingStatus);
 
       fetchWeather();
-      fetchICalCalendar();
     });
 
     const apiKey = '9ac72a485ad418e18ee51d57f8f60dab';
@@ -147,75 +171,6 @@
         `;
         container.appendChild(el);
       });
-    }
-
-    async function fetchICalCalendar() {
-      const icalUrl = 'https://calendar.google.com/calendar/ical/jthomasmanning%40gmail.com/public/basic.ics';
-
-      try {
-        const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=https://calendar.google.com/calendar/ical/jthomasmanning@gmail.com/public/basic.ics`);
-        const text = await res.text();
-        const events = parseICS(text);
-console.log('📅 Parsed calendar events:', events);
-
-        const today = new Date();
-        const todayStr = today.toISOString().split('T')[0];
-
-        const todayEvents = events.filter(e => {
-  let dateStr = e.start;
-  if (dateStr.length === 8) {
-    dateStr = dateStr.slice(0,4) + '-' + dateStr.slice(4,6) + '-' + dateStr.slice(6);
-  } else {
-    const dt = new Date(e.start.replace(/Z$/, ''));
-    dateStr = dt.toISOString().split('T')[0];
-  }
-
-  const match = dateStr === todayStr;
-  console.log(`📆 Event dateStr: ${dateStr}, Today: ${todayStr}, Match: ${match}, Summary: ${e.summary}`);
-  return match;
-});
-
-        const statusEl = document.getElementById('work-status');
-
-        const match = todayEvents.find(e => e.summary.toLowerCase().includes('home') || e.summary.toLowerCase().includes('office'));
-
-        if (match) {
-          if (match.summary.toLowerCase().includes('home')) {
-            statusEl.textContent = 'Jeff is working from home today.';
-          } else if (match.summary.toLowerCase().includes('office')) {
-            statusEl.textContent = 'Jeff is working at the office today.';
-          } else {
-            statusEl.textContent = 'Jeff’s work location is unclear today.';
-          }
-        } else {
-          statusEl.textContent = 'Jeff is not working today.';
-        }
-      } catch (err) {
-        console.error('ICS fetch error:', err);
-        document.getElementById('work-status').textContent = 'Calendar failed to load.';
-      }
-    }
-
-    function parseICS(data) {
-      const events = [];
-      const lines = data.split(/\r?\n/);
-      let current = null;
-
-      lines.forEach(line => {
-        if (line === 'BEGIN:VEVENT') {
-          current = {};
-        } else if (line === 'END:VEVENT') {
-          if (current) events.push(current);
-          current = null;
-        } else if (current) {
-          const [key, ...rest] = line.split(':');
-          const value = rest.join(':');
-          if (key.startsWith('SUMMARY')) current.summary = value;
-          if (key.startsWith('DTSTART')) current.start = value;
-        }
-      });
-
-      return events;
     }
   </script>
 </body>
