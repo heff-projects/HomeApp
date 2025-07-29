@@ -1,103 +1,177 @@
-/* style.css */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .calendar-dark-wrapper iframe {
+      width: 100%;
+      height: 40vh;
+      border: none;
+      border-radius: 16px;
+    }
+    .weather-hourly {
+      display: flex;
+      overflow-x: auto;
+      gap: 1rem;
+      padding: 0.5rem 0;
+    }
+    .weather-hour {
+      flex: 0 0 auto;
+      text-align: center;
+      min-width: 60px;
+    }
+    .weather-hour img {
+      width: 40px;
+      height: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="weather">
+      <h2>☀️ Weather</h2>
+      <div id="weather-home">
+        <p><strong>Long Beach</strong></p>
+        <div class="weather-hourly" id="weather-home-hourly"></div>
+      </div>
+      <div id="weather-pier" style="margin-top: 2rem;">
+        <p><strong>Seal Beach Pier</strong></p>
+        <div class="weather-hourly" id="weather-pier-hourly"></div>
+      </div>
+    </section>
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background-color: #1e1e2f;
-  color: #f0f0f0;
-}
+    <section class="calendar">
+      <h2>🗓️ Work Calendar</h2>
+      <div class="calendar-dark-wrapper">
+        <iframe class="responsive-calendar" src="https://calendar.google.com/calendar/embed?height=400&wkst=1&ctz=America%2FLos_Angeles&showPrint=0&mode=WEEK&showNav=0&showTabs=0&showCalendars=0&showTz=0&showTitle=0&src=NjAwMjQ0ZTE4NzRhMmY2ODBlNzg5YzdmZmRkZTE0YzkxZmI3M2M0ZWM2MjFmY2Y1YTljNWMyMDJkMDE1YzZiOUBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%23c0ca33" frameborder="0" scrolling="no"></iframe>
+      </div>
+    </section>
 
-.container {
-  max-width: 700px;
-  margin: 0 auto;
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
+    <section class="dog-feeding">
+      <h2 id="feeding-question">🐶 Dog Feeding</h2>
+      <div id="feeding-options">
+        <label><input type="checkbox" id="feed-yes"> Yes</label>
+        <label><input type="checkbox" id="feed-no"> No</label>
+      </div>
+      <div id="feeding-result" style="font-size: 2rem; font-weight: bold; margin-top: 1rem;"></div>
+      <p id="last-updated">Last updated: --:--</p>
+      <button id="reset-feeding" style="display: none; margin-top: 1rem;">Reset</button>
+    </section>
+  </div>
 
-section {
-  background-color: #2c2c3c;
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
+  <script>
+    function updateFeedingQuestion() {
+      const now = new Date();
+      const hour = now.getHours();
+      const header = document.getElementById('feeding-question');
+      if (hour >= 15) {
+        header.textContent = 'Have the dogs been fed this afternoon?';
+      } else {
+        header.textContent = 'Have the dogs been fed this morning?';
+      }
+    }
 
-h2 {
-  margin-top: 0;
-  font-size: 1.5rem;
-  color: #ffffff;
-}
+    function saveFeedingStatus(response) {
+      const data = {
+        response,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      localStorage.setItem('dogFeedingStatus', JSON.stringify(data));
+      showFeedingResult(data);
+    }
 
-label {
-  display: block;
-  margin-top: 0.75rem;
-  font-size: 1.1rem;
-  cursor: pointer;
-}
+    function showFeedingResult(data) {
+      const resultEl = document.getElementById('feeding-result');
+      resultEl.textContent = data.response.toUpperCase();
+      document.getElementById('last-updated').textContent = 'Last updated: ' + data.timestamp;
+      document.getElementById('feeding-options').style.display = 'none';
+      document.getElementById('reset-feeding').style.display = 'inline-block';
+    }
 
-input[type="checkbox"] {
-  transform: scale(1.2);
-  margin-right: 0.5rem;
-}
+    function loadFeedingStatus() {
+      const data = JSON.parse(localStorage.getItem('dogFeedingStatus'));
+      if (data) {
+        showFeedingResult(data);
+      }
+    }
 
-#last-updated {
-  margin-top: 1rem;
-  font-size: 0.9rem;
-  color: #aaaaaa;
-}
+    function resetFeedingStatus() {
+      localStorage.removeItem('dogFeedingStatus');
+      document.getElementById('feeding-options').style.display = 'block';
+      document.getElementById('feeding-result').textContent = '';
+      document.getElementById('last-updated').textContent = 'Last updated: --:--';
+      document.getElementById('reset-feeding').style.display = 'none';
+      document.getElementById('feed-yes').checked = false;
+      document.getElementById('feed-no').checked = false;
+    }
 
-p {
-  margin: 0.5rem 0;
-  line-height: 1.4;
-}
+    document.addEventListener('DOMContentLoaded', () => {
+      updateFeedingQuestion();
+      loadFeedingStatus();
 
-strong {
-  color: #88c0ff;
-}
+      document.getElementById('feed-yes').addEventListener('change', () => {
+        if (document.getElementById('feed-yes').checked) {
+          saveFeedingStatus('yes');
+        }
+      });
 
-.weather-hourly {
-  display: flex;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  gap: 1rem;
-  margin-top: 1rem;
-}
+      document.getElementById('feed-no').addEventListener('change', () => {
+        if (document.getElementById('feed-no').checked) {
+          saveFeedingStatus('no');
+        }
+      });
 
-.weather-hour {
-  flex: 0 0 auto;
-  background-color: #3a3a4d;
-  border-radius: 10px;
-  padding: 0.5rem;
-  text-align: center;
-  width: 60px;
-}
+      document.getElementById('reset-feeding').addEventListener('click', resetFeedingStatus);
 
-.weather-hour img {
-  width: 40px;
-  height: 40px;
-  display: block;
-  margin: 0 auto;
-}
+      fetchWeather();
+    });
 
-.weather-hour .time {
-  font-size: 0.9rem;
-  color: #ccc;
-  margin-bottom: 0.25rem;
-}
+    const apiKey = '9ac72a485ad418e18ee51d57f8f60dab';
+    const homeCoords = { lat: 33.8297, lon: -118.1339 };
+    const sealBeachCoords = { lat: 33.7414, lon: -118.1065 };
 
-.weather-hour .temp {
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: #fff;
-}
+    async function fetchWeather() {
+      const urls = [
+        `https://api.openweathermap.org/data/3.0/onecall?lat=${homeCoords.lat}&lon=${homeCoords.lon}&appid=${apiKey}&units=imperial`,
+        `https://api.openweathermap.org/data/3.0/onecall?lat=${sealBeachCoords.lat}&lon=${sealBeachCoords.lon}&appid=${apiKey}&units=imperial`
+      ];
 
-@media (max-width: 600px) {
-  .container {
-    padding: 1rem;
-  }
-  section {
-    padding: 1rem;
-  }
-}
+      try {
+        const [homeRes, pierRes] = await Promise.all(urls.map(url => fetch(url)));
+        const [homeData, pierData] = await Promise.all([homeRes.json(), pierRes.json()]);
+
+        renderHourlyWeather('weather-home-hourly', homeData.hourly);
+        renderHourlyWeather('weather-pier-hourly', pierData.hourly);
+      } catch (err) {
+        console.error('Weather error:', err);
+      }
+    }
+
+    function renderHourlyWeather(containerId, hourlyData) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+
+      if (!hourlyData) return;
+
+      hourlyData.slice(0, 6).forEach(hour => {
+        const time = new Date(hour.dt * 1000);
+        const hourStr = time.toLocaleTimeString([], { hour: 'numeric' });
+        const icon = hour.weather[0].icon;
+        const temp = Math.round(hour.temp);
+
+        const el = document.createElement('div');
+        el.className = 'weather-hour';
+        el.innerHTML = `
+          <div class="time">${hourStr}</div>
+          <img src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="">
+          <div class="temp">${temp}°</div>
+        `;
+        container.appendChild(el);
+      });
+    }
+  </script>
+</body>
+</html>
