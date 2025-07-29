@@ -153,12 +153,27 @@
       const icalUrl = 'https://calendar.google.com/calendar/ical/jthomasmanning%40gmail.com/public/basic.ics';
 
       try {
-        const res = await fetch(icalUrl);
+        const res = await fetch(`https://api.codetabs.com/v1/proxy?quest=https://calendar.google.com/calendar/ical/jthomasmanning@gmail.com/public/basic.ics`);
         const text = await res.text();
         const events = parseICS(text);
+console.log('📅 Parsed calendar events:', events);
 
-        const today = new Date().toISOString().split('T')[0];
-        const todayEvents = events.filter(e => e.start.startsWith(today));
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        const todayEvents = events.filter(e => {
+  let dateStr = e.start;
+  if (dateStr.length === 8) {
+    dateStr = dateStr.slice(0,4) + '-' + dateStr.slice(4,6) + '-' + dateStr.slice(6);
+  } else {
+    const dt = new Date(e.start.replace(/Z$/, ''));
+    dateStr = dt.toISOString().split('T')[0];
+  }
+
+  const match = dateStr === todayStr;
+  console.log(`📆 Event dateStr: ${dateStr}, Today: ${todayStr}, Match: ${match}, Summary: ${e.summary}`);
+  return match;
+});
 
         const statusEl = document.getElementById('work-status');
 
