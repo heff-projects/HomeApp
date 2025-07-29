@@ -6,26 +6,49 @@
   <title>Home Dashboard</title>
   <link rel="stylesheet" href="style.css">
   <style>
+    body {
+      background-color: #e0e4ec;
+      color: #222;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 2rem;
+    }
+    section {
+      background-color: #f5f7fa;
+      padding: 1rem 1.5rem;
+      margin-bottom: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    h2 {
+      margin-top: 0;
+      color: #333;
+    }
     .calendar-dark-wrapper iframe {
       width: 100%;
       height: 40vh;
       border: none;
       border-radius: 16px;
+      background-color: transparent;
     }
-    .weather-hourly {
+    .dog-feeding label {
+      display: inline-block;
+      margin-right: 1rem;
+    }
+    .weather-widget-container {
       display: flex;
-      overflow-x: auto;
-      gap: 1rem;
-      padding: 0.5rem 0;
+      justify-content: center;
+      max-width: 750px;
+      margin: 0 auto 2rem;
     }
-    .weather-hour {
-      flex: 0 0 auto;
-      text-align: center;
-      min-width: 60px;
-    }
-    .weather-hour img {
-      width: 40px;
-      height: 40px;
+    .tomorrow {
+      border-radius: 12px;
+      overflow: hidden;
     }
   </style>
 </head>
@@ -33,13 +56,26 @@
   <div class="container">
     <section class="weather">
       <h2>☀️ Weather</h2>
-      <div id="weather-home">
-        <p><strong>Long Beach</strong></p>
-        <div class="weather-hourly" id="weather-home-hourly"></div>
-      </div>
-      <div id="weather-pier" style="margin-top: 2rem;">
-        <p><strong>Seal Beach Pier</strong></p>
-        <div class="weather-hourly" id="weather-pier-hourly"></div>
+      <div class="weather-widget-container">
+        <div class="tomorrow"
+           data-location-id="120738"
+           data-language="EN"
+           data-unit-system="IMPERIAL"
+           data-skin="light"
+           data-widget-type="upcoming"
+           style="padding-bottom:22px;position:relative; width:100%; max-width: 750px;">
+          <a
+            href="https://weather.tomorrow.io/"
+            rel="nofollow noopener noreferrer"
+            target="_blank"
+            style="position: absolute; bottom: 0; transform: translateX(-50%); left: 50%;">
+            <img
+              alt="Powered by Tomorrow.io"
+              src="https://weather-website-client.tomorrow.io/img/powered-by.svg"
+              width="250"
+              height="18"/>
+          </a>
+        </div>
       </div>
     </section>
 
@@ -63,21 +99,29 @@
   </div>
 
   <script>
-    function updateFeedingQuestion() {
-      const now = new Date();
-      const hour = now.getHours();
+    let lastPeriod = '';
+
+    function getCurrentPeriod() {
+      const hour = new Date().getHours();
+      return hour >= 15 ? 'afternoon' : 'morning';
+    }
+
+    function updateFeedingQuestion(forceReset = false) {
+      const currentPeriod = getCurrentPeriod();
       const header = document.getElementById('feeding-question');
-      if (hour >= 15) {
-        header.textContent = 'Have the dogs been fed this afternoon?';
-      } else {
-        header.textContent = 'Have the dogs been fed this morning?';
+      header.textContent = `Have the dogs been fed this ${currentPeriod}?`;
+
+      if (lastPeriod && currentPeriod !== lastPeriod) {
+        resetFeedingStatus();
       }
+      lastPeriod = currentPeriod;
     }
 
     function saveFeedingStatus(response) {
       const data = {
         response,
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: new Date().toLocaleTimeString(),
+        period: getCurrentPeriod()
       };
       localStorage.setItem('dogFeedingStatus', JSON.stringify(data));
       showFeedingResult(data);
@@ -93,8 +137,11 @@
 
     function loadFeedingStatus() {
       const data = JSON.parse(localStorage.getItem('dogFeedingStatus'));
-      if (data) {
+      if (data && data.period === getCurrentPeriod()) {
+        lastPeriod = data.period;
         showFeedingResult(data);
+      } else {
+        resetFeedingStatus();
       }
     }
 
@@ -126,52 +173,23 @@
 
       document.getElementById('reset-feeding').addEventListener('click', resetFeedingStatus);
 
-      fetchWeather();
+      setInterval(updateFeedingQuestion, 60000);
     });
-
-    const apiKey = '9ac72a485ad418e18ee51d57f8f60dab';
-    const homeCoords = { lat: 33.8297, lon: -118.1339 };
-    const sealBeachCoords = { lat: 33.7414, lon: -118.1065 };
-
-    async function fetchWeather() {
-      const urls = [
-        `https://api.openweathermap.org/data/3.0/onecall?lat=${homeCoords.lat}&lon=${homeCoords.lon}&appid=${apiKey}&units=imperial`,
-        `https://api.openweathermap.org/data/3.0/onecall?lat=${sealBeachCoords.lat}&lon=${sealBeachCoords.lon}&appid=${apiKey}&units=imperial`
-      ];
-
-      try {
-        const [homeRes, pierRes] = await Promise.all(urls.map(url => fetch(url)));
-        const [homeData, pierData] = await Promise.all([homeRes.json(), pierRes.json()]);
-
-        renderHourlyWeather('weather-home-hourly', homeData.hourly);
-        renderHourlyWeather('weather-pier-hourly', pierData.hourly);
-      } catch (err) {
-        console.error('Weather error:', err);
+  </script>
+  <script>
+    (function(d, s, id) {
+      if (d.getElementById(id)) {
+        if (window.__TOMORROW__) {
+          window.__TOMORROW__.renderWidget();
+        }
+        return;
       }
-    }
-
-    function renderHourlyWeather(containerId, hourlyData) {
-      const container = document.getElementById(containerId);
-      container.innerHTML = '';
-
-      if (!hourlyData) return;
-
-      hourlyData.slice(0, 6).forEach(hour => {
-        const time = new Date(hour.dt * 1000);
-        const hourStr = time.toLocaleTimeString([], { hour: 'numeric' });
-        const icon = hour.weather[0].icon;
-        const temp = Math.round(hour.temp);
-
-        const el = document.createElement('div');
-        el.className = 'weather-hour';
-        el.innerHTML = `
-          <div class="time">${hourStr}</div>
-          <img src="https://openweathermap.org/img/wn/${icon}@2x.png" alt="">
-          <div class="temp">${temp}°</div>
-        `;
-        container.appendChild(el);
-      });
-    }
+      const fjs = d.getElementsByTagName(s)[0];
+      const js = d.createElement(s);
+      js.id = id;
+      js.src = "https://www.tomorrow.io/v1/widget/sdk/sdk.bundle.min.js";
+      fjs.parentNode.insertBefore(js, fjs);
+    })(document, 'script', 'tomorrow-sdk');
   </script>
 </body>
 </html>
